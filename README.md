@@ -151,6 +151,6 @@ Causal self-attention weights (head 0) over the target embeddings:
 
 ## License
 
-PolyForm Noncommercial License 1.0.0, see [LICENSE](LICENSE). The code is free to use for noncommercial and research purposes. Commercial use requires a separate license: please contact lhampis@gmail.com.
+PolyForm Noncommercial License 1.0.0, see [LICENSE](LICENSE). The code is free to use for noncommercial and research purposes. Commercial use requires a separate license: please contact charalambosrotsides@gmail.com or charalambosrotsides@outlook.com.
 
 The vendored test framework in `third_party/doctest` is MIT licensed (see `third_party/doctest/LICENSE.txt`).
