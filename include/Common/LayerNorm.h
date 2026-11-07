@@ -1,23 +1,22 @@
 // LayerNorm.h
-
 #ifndef LAYERNORM_H
 #define LAYERNORM_H
 
+#include "Common/Types.h"
 
-#include <vector>
-#include <iostream>
-#include <cmath>
-#include <algorithm>
-#include <numeric>
-
+// Layer normalization over the feature dimension of a single token vector:
+//   y_i = gamma_i * (x_i - mean) / sqrt(var + eps) + beta_i
 class LayerNorm {
 public:
-    explicit LayerNorm(int model_dim); // Corrected: Removed inline initialization and added semicolon
+    explicit LayerNorm(int model_dim, double epsilon = 1e-5);
 
-    std::vector<double> normalize(const std::vector<double>& input) const; // Added 'const' to match the definition
+    Vector normalize(const Vector& input) const;
+    Matrix normalize(const Matrix& inputs) const; // row-wise
+
 private:
     int model_dim;
-    std::vector<double> gamma, beta;
+    double epsilon;
+    Vector gamma, beta; // learnable scale / shift (initialised to 1 / 0)
 };
 
 #endif // LAYERNORM_H

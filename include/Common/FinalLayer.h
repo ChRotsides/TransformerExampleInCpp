@@ -2,26 +2,21 @@
 #ifndef FINAL_LAYER_H
 #define FINAL_LAYER_H
 
-#include <vector>
-#include <cmath>
-#include <iostream>
-#include <algorithm>
-#include <numeric>
+#include "Common/Types.h"
 
+// Output projection: logits = W x + b, probabilities = softmax(logits).
 class FinalLayer {
 public:
-    explicit FinalLayer(int input_dim, int output_dim);
+    FinalLayer(int input_dim, int output_dim, unsigned seed = 42);
 
-    std::vector<double> forward(const std::vector<double>& input) const;
-    void updateParameters(std::vector<double>& gradients,int index, double learning_rate);
+    Vector logits(const Vector& input) const;
+    Vector forward(const Vector& input) const; // softmax probabilities over output_dim classes
+    Matrix forward(const Matrix& inputs) const; // row-wise
 
 private:
     int input_dim, output_dim;
-    std::vector<std::vector<double>> W; // Weights for the linear layer
-    std::vector<double> b; // Bias for the linear layer
-
-    std::vector<double> linear(const std::vector<double>& input) const;
-    std::vector<double> softmax(const std::vector<double>& input) const;
+    Matrix W; // (output_dim x input_dim)
+    Vector b; // (output_dim)
 };
 
 #endif // FINAL_LAYER_H

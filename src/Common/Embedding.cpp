@@ -1,110 +1,71 @@
 // Embedding.cpp
-#include "../../include/Common/Embedding.h"
+#include "Common/Embedding.h"
 
-Embedding::Embedding(int vocab_size, int embed_dim){
-    this->vocab_size = vocab_size;
-    this->embed_dim = embed_dim;
-    
-    
-    this->embedding_matrix = generateRandomEmbeddingMatrix(embed_dim, vocab_size);
-    // print the vector dims
-    std::cout << "Embedding matrix dims: " << embedding_matrix->size() << " x " << embedding_matrix[0].size() << std::endl;
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <random>
+#include <sstream>
+#include <stdexcept>
+
+Embedding::Embedding(int vocab_size, int embed_dim, unsigned seed)
+    : vocab_size(vocab_size), embed_dim(embed_dim) {
+    if (vocab_size <= 0 || embed_dim <= 0)
+        throw std::invalid_argument("Embedding: vocab_size and embed_dim must be positive");
+    std::mt19937 gen(seed);
+    std::normal_distribution<double> dist(0.0, 1.0);
+    embedding_matrix.assign(vocab_size, Vector(embed_dim));
+    for (auto& row : embedding_matrix)
+        for (auto& x : row) x = dist(gen);
 }
 
-void Embedding::printEmbeddingMatrix() {
-    std::cout << "Embedding matrix: " << std::endl;
-    for (int i = 0; i < this->vocab_size; i++) { // Ensure loops are over vocab_size and embed_dim in the correct order
-        for (int j = 0; j < this->embed_dim; j++) {
-            // Set precision to 2 decimal places and a fixed width for alignment
-            std::cout << std::fixed << std::setprecision(2) << std::setw(6) << (*this->embedding_matrix)[i][j] << " ";
-        }
+void Embedding::printEmbeddingMatrix() const {
+    std::cout << "Embedding matrix:" << std::endl;
+    for (const auto& row : embedding_matrix) {
+        for (double x : row) std::cout << std::fixed << std::setprecision(2) << std::setw(6) << x << " ";
         std::cout << std::endl;
     }
 }
 
-void Embedding::saveEmbeddingMatrix(const std::string& filename) {
+void Embedding::saveEmbeddingMatrix(const std::string& filename) const {
     std::ofstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file for writing: " << filename << std::endl;
-        return;
+    if (!file.is_open()) throw std::runtime_error("Embedding: cannot open for writing: " + filename);
+    file << std::setprecision(17);
+    for (const auto& row : embedding_matrix) {
+        for (double x : row) file << x << ' ';
+        file << '\n';
     }
-
-    std::ostringstream oss;
-    for (int i = 0; i < this->vocab_size; i++) {
-        for (int j = 0; j < this->embed_dim; j++) {
-            oss << (*this->embedding_matrix)[i][j] << " ";
-        }
-        oss << '\n'; // Use '\n' instead of std::endl to avoid flushing the stream unnecessarily
-    }
-
-    file << oss.str(); // Write the entire matrix to the file in one operation
-    file.close();
 }
+
 void Embedding::loadEmbeddingMatrix(const std::string& filename) {
     std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file for reading: " << filename << std::endl;
-        return;
-    }
+    if (!file.is_open()) throw std::runtime_error("Embedding: cannot open for reading: " + filename);
 
-    // Resize the embedding matrix to match the expected dimensions
-    (*this->embedding_matrix).resize(this->vocab_size, std::vector<double>(this->embed_dim, 0.0f));
-
+    Matrix loaded(vocab_size, Vector(embed_dim, 0.0));
     std::string line;
     int row = 0;
-    while (std::getline(file, line) && row < this->vocab_size) {
+    while (row < vocab_size && std::getline(file, line)) {
         std::istringstream iss(line);
-        double value;
         int col = 0;
-
-        while (iss >> value && col < this->embed_dim) {
-            (*this->embedding_matrix)[row][col] = value;
-            ++col;
-        }
-
-        if (col != this->embed_dim) {
-            std::cerr << "Error: Line " << (row + 1) << " does not have enough values." << std::endl;
-            return;
-        }
-
+        double value;
+        while (col < embed_dim && iss >> value) loaded[row][col++] = value;
+        if (col != embed_dim)
+            throw std::runtime_error("Embedding: row " + std::to_string(row + 1) + " has too few values");
         ++row;
     }
-
-    if (row != this->vocab_size) {
-        std::cerr << "Error: File does not have enough lines." << std::endl;
-        return;
-    }
-
-    file.close();
+    if (row != vocab_size) throw std::runtime_error("Embedding: file has too few rows");
+    embedding_matrix = std::move(loaded);
 }
 
-std::vector<std::vector<double>> *Embedding::generateRandomEmbeddingMatrix(int embed_dim, int vocab_size){
-    std::vector<std::vector<double>>* embedding_matrix= new std::vector<std::vector<double>>(vocab_size, std::vector<double>(embed_dim, 0.0));
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(0, 1);
-    for (int i = 0; i < this->vocab_size; i++){
-        for (int j = 0; j < this->embed_dim; j++){
-            (*embedding_matrix)[i][j] = dis(gen);
-        }
-    }
-    return embedding_matrix;
+Vector Embedding::getEmbedding(int token_id) const {
+    if (token_id < 0 || token_id >= vocab_size)
+        throw std::out_of_range("Embedding: token id out of range");
+    return embedding_matrix[token_id];
 }
 
-std::vector<double> Embedding::getEmbedding(int token_id){
-    return (*this->embedding_matrix)[token_id];
-}
-
-std::vector<std::vector<double>> *Embedding::tokenToEmbeddings(std::vector<int> tokens){
-    std::vector<std::vector<double>>* embeddings = new std::vector<std::vector<double>>( tokens.size() , std::vector<double>(this->embed_dim, 0.0));
-    for (int i = 0; i < tokens.size(); i++){
-        (*embeddings)[i] = (*this->embedding_matrix)[tokens[i]];
-    }
-    return embeddings;
-}
-
-Embedding::~Embedding()
-{
-    delete this->embedding_matrix;
-
+Matrix Embedding::tokenToEmbeddings(const std::vector<int>& tokens) const {
+    Matrix out;
+    out.reserve(tokens.size());
+    for (int t : tokens) out.push_back(getEmbedding(t));
+    return out;
 }

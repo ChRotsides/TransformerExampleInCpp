@@ -1,36 +1,31 @@
 // Embedding.h
-
 #ifndef EMBEDDING_H
 #define EMBEDDING_H
 
-#include <iostream>
 #include <string>
 #include <vector>
-#include <map>
-#include <iomanip>
-#include <random>
-#include <fstream>
-#include <sstream>
 
-class Embedding
-{
+#include "Common/Types.h"
+
+// Lookup table mapping token ids to dense vectors (vocab_size x embed_dim).
+class Embedding {
+public:
+    Embedding(int vocab_size, int embed_dim, unsigned seed = 42);
+
+    Vector getEmbedding(int token_id) const;
+    Matrix tokenToEmbeddings(const std::vector<int>& tokens) const;
+
+    void saveEmbeddingMatrix(const std::string& filename) const;
+    void loadEmbeddingMatrix(const std::string& filename);
+    void printEmbeddingMatrix() const;
+
+    int vocabSize() const { return vocab_size; }
+    int embedDim() const { return embed_dim; }
+
 private:
     int vocab_size;
     int embed_dim;
-    int max_seq_len;
-    std::vector<std::vector<double>> *embedding_matrix;
-
-public:
-    Embedding(int vocab_size, int embed_dim);
-    std::vector<double> getEmbedding(int token_id);
-    
-    std::vector<std::vector<double>> *tokenToEmbeddings(std::vector<int> tokens);
-    void saveEmbeddingMatrix(const std::string &filename);
-    void loadEmbeddingMatrix(const std::string &filename);
-    std::vector<std::vector<double>> *generateRandomEmbeddingMatrix(int embed_dim, int vocab_size);
-
-    void printEmbeddingMatrix();
-    ~Embedding();
+    Matrix embedding_matrix;
 };
 
 #endif // EMBEDDING_H

@@ -2,20 +2,25 @@
 #ifndef POSITIONAL_ENCODING_H
 #define POSITIONAL_ENCODING_H
 
-#include <cmath>
-#include <vector>
-#include <stdexcept>
-#include <iostream>
+#include "Common/Types.h"
+
+// Sinusoidal positional encoding (Vaswani et al., 2017):
+//   PE(pos, 2k)   = sin(pos / 10000^(2k / model_dim))
+//   PE(pos, 2k+1) = cos(pos / 10000^(2k / model_dim))
 class PositionalEncoding {
 public:
     PositionalEncoding(int max_seq_len, int model_dim);
-    const std::vector<double>& getEncoding(int pos);
-    std::vector<std::vector<double>> *getEncodings(std::vector<std::vector<double>> &embeddings);
+
+    const Vector& getEncoding(int pos) const;
+
+    // Returns embeddings + positional encodings (same shape as the input).
+    // Throws if the sequence is longer than max_seq_len or the width differs from model_dim.
+    Matrix apply(const Matrix& embeddings) const;
 
 private:
     int max_seq_len;
     int model_dim;
-    std::vector<std::vector<double>> encoding_matrix;
+    Matrix encoding_matrix;
 };
 
 #endif // POSITIONAL_ENCODING_H

@@ -1,47 +1,37 @@
 // FinalLayer.cpp
-#include "../../include/Common/FinalLayer.h"
+#include "Common/FinalLayer.h"
 
-FinalLayer::FinalLayer(int input_dim, int output_dim) : input_dim(input_dim), output_dim(output_dim) {
-    W.resize(output_dim, std::vector<double>(input_dim, 0.1f)); // Placeholder initialization
-    b.resize(output_dim, 0.0f); // Placeholder initialization
+#include <cmath>
+#include <random>
+#include <stdexcept>
+
+#include "Common/VectorMath.h"
+#include "Common/utils.h"
+
+FinalLayer::FinalLayer(int input_dim, int output_dim, unsigned seed)
+    : input_dim(input_dim), output_dim(output_dim), W(output_dim, Vector(input_dim)), b(output_dim, 0.0) {
+    std::mt19937 gen(seed);
+    const double range = std::sqrt(6.0 / (input_dim + output_dim)); // Glorot uniform
+    std::uniform_real_distribution<double> dist(-range, range);
+    for (auto& row : W)
+        for (auto& x : row) x = dist(gen);
 }
 
-std::vector<double> FinalLayer::forward(const std::vector<double>& input) const {
-    auto z = linear(input);
-    return softmax(z);
+Vector FinalLayer::logits(const Vector& input) const {
+    if (static_cast<int>(input.size()) != input_dim)
+        throw std::invalid_argument("FinalLayer: input size does not match input_dim");
+    Vector z = VectorMath::matvec(W, input);
+    for (int i = 0; i < output_dim; ++i) z[i] += b[i];
+    return z;
 }
 
-std::vector<double> FinalLayer::linear(const std::vector<double>& input) const {
-    std::vector<double> output(output_dim, 0.0f);
-    for (int i = 0; i < output_dim; ++i) {
-        for (int j = 0; j < input_dim; ++j) {
-            output[i] += W[i][j] * input[j];
-        }
-        output[i] += b[i];
-    }
-    return output;
+Vector FinalLayer::forward(const Vector& input) const {
+    return Utils::softmax(logits(input));
 }
-void FinalLayer::updateParameters(std::vector<double>& gradients,int index, double learning_rate) {
-    // Assuming weights and gradients are 2D vectors of the same shape
 
-        for (size_t j = 0; j < W[index].size(); ++j) {
-            W[index][j] -= learning_rate * gradients[j];  // Update rule for SGD
-        }
-
-}
-std::vector<double> FinalLayer::softmax(const std::vector<double>& input) const {
-    std::vector<double> output(input.size(), 0.0f);
-    double maxElement = *max_element(input.begin(), input.end());
-    double sum = 0.0f;
-
-    for (size_t i = 0; i < input.size(); ++i) {
-        output[i] = std::exp(input[i] - maxElement); // Improve numerical stability
-        sum += output[i];
-    }
-
-    for (size_t i = 0; i < input.size(); ++i) {
-        output[i] /= sum;
-    }
-
-    return output;
+Matrix FinalLayer::forward(const Matrix& inputs) const {
+    Matrix out;
+    out.reserve(inputs.size());
+    for (const auto& row : inputs) out.push_back(forward(row));
+    return out;
 }

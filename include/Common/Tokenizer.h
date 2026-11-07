@@ -2,31 +2,34 @@
 #ifndef SELF_TOKENIZER_H
 #define SELF_TOKENIZER_H
 
-#include <iostream>
-#include <sstream>
-#include <vector>
+#include <string>
 #include <unordered_map>
-#include <fstream>
+#include <vector>
 
+#include "Common/Types.h"
 
-
-
-class Tokenizer
-{
-private:
-    std::unordered_map<std::string, int> word_to_token_id; // Maps words to unique token IDs
-    std::unordered_map<int, std::string> token_id_to_word; // Maps token IDs to words
-    int vocab_size;
+// Whitespace word tokenizer. Ids are assigned in order of first appearance.
+class Tokenizer {
 public:
-    Tokenizer();
-    std::vector<int> tokenize(std::string text);
-    int getVocabSize();
+    Tokenizer() = default;
+
+    // Splits on whitespace, adding unseen words to the vocabulary.
+    std::vector<int> tokenize(const std::string& text);
+    // Joins words with single spaces; unknown ids are rendered as "<unk>".
+    std::string detokenize(const std::vector<int>& tokens) const;
+
+    int getVocabSize() const { return static_cast<int>(word_to_token_id.size()); }
+    // Returns the id of an existing word, or -1.
+    int tokenId(const std::string& word) const;
+    Vector oneHotEncode(int token_id) const;
+
     void printWordToTokenIdMap() const;
-    std::string detokenize(std::vector<int> tokens);
-    void saveTokenMap(std::string filename);
-    void loadTokenMap(std::string filename);
-    std::vector<std::vector<double>> oneHotEncode(int token_id);
-    ~Tokenizer();
+    void saveTokenMap(const std::string& filename) const;
+    void loadTokenMap(const std::string& filename);
+
+private:
+    std::unordered_map<std::string, int> word_to_token_id;
+    std::unordered_map<int, std::string> token_id_to_word;
 };
 
-#endif
+#endif // SELF_TOKENIZER_H

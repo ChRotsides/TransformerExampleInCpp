@@ -1,91 +1,68 @@
 // Tokenizer.cpp
+#include "Common/Tokenizer.h"
 
-#include "../../include/Common/Tokenizer.h"
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
 
-Tokenizer::Tokenizer(){
-    // Initialize the word_to_token_id map
-    this->word_to_token_id = std::unordered_map<std::string, int>();
-}
-
-std::vector<int> Tokenizer::tokenize(std::string text){
+std::vector<int> Tokenizer::tokenize(const std::string& text) {
     std::vector<int> tokens;
     std::istringstream iss(text);
     std::string word;
-    while (iss >> word)
-    {
-     
-        // If the word is not in the map, add it
-        if (this->word_to_token_id.find(word) == this->word_to_token_id.end())
-        {
-            int token_id = this->word_to_token_id.size();
-            this->word_to_token_id[word] = token_id;
-            this->token_id_to_word[token_id] = word;
+    while (iss >> word) {
+        auto it = word_to_token_id.find(word);
+        if (it == word_to_token_id.end()) {
+            const int id = static_cast<int>(word_to_token_id.size());
+            it = word_to_token_id.emplace(word, id).first;
+            token_id_to_word[id] = word;
         }
-        tokens.push_back(this->word_to_token_id[word]);
+        tokens.push_back(it->second);
     }
     return tokens;
 }
 
-void Tokenizer::printWordToTokenIdMap() const{
-    std::cout << "Word to Token ID Map:" << std::endl;
-    for (const auto &pair : this->word_to_token_id)
-    {
-        std::cout << pair.first << " -> " << pair.second << std::endl;
-    }
+int Tokenizer::tokenId(const std::string& word) const {
+    auto it = word_to_token_id.find(word);
+    return it == word_to_token_id.end() ? -1 : it->second;
 }
 
-int Tokenizer::getVocabSize(){
-    return this->word_to_token_id.size();
-}
-
-std::string Tokenizer::detokenize(std::vector<int> tokens){
+std::string Tokenizer::detokenize(const std::vector<int>& tokens) const {
     std::string text;
-    for (int i = 0; i < tokens.size(); i++)
-    {
-        text+=this->token_id_to_word[tokens[i]] + " ";
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        auto it = token_id_to_word.find(tokens[i]);
+        if (i > 0) text += ' ';
+        text += (it == token_id_to_word.end()) ? "<unk>" : it->second;
     }
     return text;
 }
 
-void Tokenizer::saveTokenMap(std::string filename){
-    std::ofstream file;
-    file.open(filename);
-    for (const auto &pair : this->word_to_token_id)
-    {
-        file << pair.first << " " << pair.second << std::endl;
-    }
-    file.close();
+Vector Tokenizer::oneHotEncode(int token_id) const {
+    if (token_id < 0 || token_id >= getVocabSize())
+        throw std::out_of_range("Tokenizer: token id out of range");
+    Vector v(getVocabSize(), 0.0);
+    v[token_id] = 1.0;
+    return v;
 }
-void Tokenizer::loadTokenMap(std::string filename){
-    std::ifstream file;
-    try
-    {
-        
-        file.open(filename);
-    }
-    catch(const std::exception& e)
-    {
-        return;
-    }
-    std::cout << "Loaded token map succesfully" << std::endl;
+
+void Tokenizer::printWordToTokenIdMap() const {
+    std::cout << "Word to Token ID Map:" << std::endl;
+    for (const auto& pair : word_to_token_id) std::cout << pair.first << " -> " << pair.second << std::endl;
+}
+
+void Tokenizer::saveTokenMap(const std::string& filename) const {
+    std::ofstream file(filename);
+    if (!file.is_open()) throw std::runtime_error("Tokenizer: cannot open for writing: " + filename);
+    for (const auto& pair : word_to_token_id) file << pair.first << ' ' << pair.second << '\n';
+}
+
+void Tokenizer::loadTokenMap(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) throw std::runtime_error("Tokenizer: cannot open for reading: " + filename);
     std::string word;
     int token_id;
-    while (file >> word >> token_id)
-    {
-        this->word_to_token_id[word] = token_id;
-        this->token_id_to_word[token_id] = word;
+    while (file >> word >> token_id) {
+        word_to_token_id[word] = token_id;
+        token_id_to_word[token_id] = word;
     }
-    file.close();
-}
-std::vector<std::vector<double>> Tokenizer::oneHotEncode(int token_id) {
-    std::vector<std::vector<double>> oneHotLabels;
-    std::vector<double> oneHotLabel(this->word_to_token_id.size(), 0);
-    oneHotLabel[token_id] = 1;
-    oneHotLabels.push_back(oneHotLabel);
-
-    return oneHotLabels;
-}
-
-Tokenizer::~Tokenizer()
-{
 }
