@@ -38,3 +38,15 @@ target_include_directories(transformer PUBLIC include)
 add_executable(transformer_demo examples/demo.cpp)
 target_link_libraries(transformer_demo PRIVATE transformer)
 
+# Unit tests (doctest is vendored in third_party/).
+enable_testing()
+add_executable(transformer_tests
+    tests/test_main.cpp
+    tests/test_math.cpp
+    tests/test_components.cpp
+    tests/test_attention.cpp
+    tests/test_model.cpp
+)
+target_include_directories(transformer_tests PRIVATE third_party/doctest)
+target_link_libraries(transformer_tests PRIVATE transformer)
+add_test(NAME unit_tests COMMAND transformer_tests)
